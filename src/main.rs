@@ -1,5 +1,4 @@
 use std::process::ExitCode;
-use std::thread;
 use std::time::{Duration, Instant};
 
 use falling_sand::{Message, Model, State};
@@ -42,34 +41,25 @@ fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
     let terminal_dims = terminal.get_frame().area();
     model.resize(terminal_dims.width as usize, terminal_dims.height as usize);
     let fps = 60;
-    let tick_rate = 1.0 / fps as f64;
-    let mut accumulator = 0.0;
-    let mut current_time = Instant::now();
+    let tick_rate = Duration::from_secs_f64(1.0 / fps as f64);
+    let mut last_tick = Instant::now();
 
     while model.state != State::Done {
-        let new_time = Instant::now();
-        let frame_time = new_time.duration_since(current_time).as_secs_f64();
-        current_time = new_time;
-        accumulator += frame_time;
-        // clamp value to mitigate impact of the system performance
-        accumulator = accumulator.clamp(0.0, 0.25);
-
-        while accumulator >= tick_rate {
-            let timeout = (tick_rate - frame_time).clamp(0.0, tick_rate);
-            let mut message = handle_event(&model, Duration::from_secs_f64(timeout))?;
+        terminal.draw(|f| view(&model, f))?;
+        let timeout = tick_rate
+            .checked_sub(last_tick.elapsed())
+            .unwrap_or(Duration::from_secs(0));
+        let mut message = handle_event(&model, timeout)?;
+        if last_tick.elapsed() >= tick_rate {
             if message.is_none() {
                 message = Some(Message::Tick);
             }
-            while let Some(msg) = message {
-                message = update(&mut model, msg, Duration::from_secs_f64(tick_rate));
-            }
-            accumulator -= tick_rate;
+            last_tick = Instant::now();
         }
 
-        let _alpha = accumulator / tick_rate;
-        terminal.draw(|f| view(&model, f))?;
-
-        thread::sleep(Duration::from_millis(1));
+        while let Some(msg) = message {
+            message = update(&mut model, msg, tick_rate);
+        }
     }
 
     Ok(())
