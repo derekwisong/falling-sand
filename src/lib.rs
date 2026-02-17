@@ -311,35 +311,38 @@ pub fn default_spawners() -> Vec<Spawner> {
         Spawner::default()
             .with_anchor(Anchor::CenterX(0))
             .with_material(Material::Sand)
-            .with_radius(75.0)
-            .with_rate(10.0)
-            .with_strategy(SpawnStrategy::Uniform)
+            .with_radius(100.0)
+            .with_rate(50.0)
+            .with_strategy(SpawnStrategy::Gaussian)
             .with_velocity_strategy(
-                VelocityStrategy::Gaussian(0.0, 10.0),
-                VelocityStrategy::Uniform(0.0, 10.0),
+                VelocityStrategy::Gaussian(0.0, 30.0),
+                VelocityStrategy::Gaussian(20.0, 5.0),
             ),
         Spawner::default()
             .with_anchor(Anchor::CenterX(0))
             .with_material(Material::Fire)
-            .with_radius(75.0)
-            .with_rate(10.0)
+            .with_radius(100.0)
+            .with_rate(30.0)
+            .with_strategy(SpawnStrategy::Gaussian)
             .with_velocity_strategy(
-                VelocityStrategy::Uniform(-5.0, 5.0),
-                VelocityStrategy::Uniform(0.0, 0.0),
+                VelocityStrategy::Uniform(-100.0, 100.0),
+                VelocityStrategy::Uniform(0.0, 30.0),
             ),
         Spawner::default()
             .with_anchor(Anchor::CenterX(0))
             .with_material(Material::Water)
+            .with_strategy(SpawnStrategy::Gaussian)
             .with_velocity_strategy(
-                VelocityStrategy::Uniform(-10.0, 10.0),
-                VelocityStrategy::Uniform(0.0, 5.0),
+                VelocityStrategy::Uniform(-50.0, 50.0),
+                VelocityStrategy::Uniform(0.0, 10.0),
             )
-            .with_radius(75.0)
-            .with_rate(5.0),
+            .with_radius(100.0)
+            .with_rate(50.0),
         Spawner::default()
             .with_anchor(Anchor::CenterX(0))
             .with_material(Material::Wood)
-            .with_radius(75.0)
+            .with_strategy(SpawnStrategy::Gaussian)
+            .with_radius(100.0)
             .with_rate(10.0)
             .with_velocity_strategy(
                 VelocityStrategy::Gaussian(0.0, 10.0),
@@ -506,23 +509,21 @@ impl Model {
         _: isize,
     ) {
         let current_idx = self.get_index(current_x, current_y).unwrap();
-        for neighbor_x in -1..=1 {
-            let neighbor_x = neighbor_x + current_x;
+        for y_offset in [-1, 1] {
+            let neighbor_y = current_y + y_offset;
 
-            for neighbor_y in -1..=1 {
-                let current_mat = self.particles[current_idx].material;
-                let neighbor_y = neighbor_y + current_y;
+            for x_offset in [-1, 1] {
+                let neighbor_x = current_x + x_offset;
 
-                if neighbor_x == current_x && neighbor_y == current_y {
-                    continue;
-                }
                 if let Some(neighbor_idx) = self.get_index(neighbor_x, neighbor_y) {
+                    let current_mat = self.particles[current_idx].material;
                     let neighbor_mat = self.particles[neighbor_idx].material;
+
                     if current_mat == Material::Fire && neighbor_mat.is_combustable() {
                         self.particles[neighbor_idx].material = Material::Fire;
                     } else if current_mat == Material::Water && neighbor_mat == Material::Fire {
                         self.particles[neighbor_idx] = Particle::default();
-                        //self.particles[current_idx] = Particle::default();
+                        self.particles[current_idx] = Particle::default();
                     }
                 }
             }
@@ -541,7 +542,7 @@ impl Model {
         let current_vel = self.particles[current_idx].velocity;
         let current_mat = self.particles[current_idx].material;
         let target_mat = self.particles[target_idx].material;
-        let transfer_rate = (current_mat.bounce() + target_mat.bounce()) / 2.0;
+        let transfer_rate = ((current_mat.bounce() + target_mat.bounce()) / 2.0).clamp(0.5, 1.0);
         self.particles[target_idx].velocity.x += current_vel.x * transfer_rate;
         self.particles[target_idx].velocity.y += current_vel.y * transfer_rate;
         self.particles[current_idx].velocity.x *= 1.0 - transfer_rate;
