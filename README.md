@@ -1,4 +1,3 @@
 # falling-sand
-
-![Demo](https://asciinema.org/a/788929)
+[![Asciinema Recording](https://asciinema.org/a/788929.png)](https://asciinema.org/a/788929)
 
