@@ -2,6 +2,9 @@
 name = "falling-sand"
 version = "0.1.0"
 edition = "2024"
+description = "A falling-sand simulation in the terminal, built with Ratatui."
+license = "MIT"
+repository = "https://github.com/derekwisong/falling-sand"
 
 [dependencies]
 rand = "0.10.0"
